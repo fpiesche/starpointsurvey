@@ -68,8 +68,13 @@ for page in range(0, max_page):
 	while len(survey_links) > 0:
 		print(str(len(survey_links)) + " surveys left to complete...")
 		driver.find_element_by_class_name(form_elements["survey_links"]).click()
-		all_elements = driver.find_elements_by_xpath(form_elements["xpath_survey_questions"])
-		age_box = driver.find_element_by_id(form_elements["age_box"])
+		try:
+			all_elements = driver.find_elements_by_xpath(form_elements["xpath_survey_questions"])
+			age_box = driver.find_element_by_id(form_elements["age_box"])
+		except NoSuchElementException:
+			# TODO: handle the single-page survey for big downloads (?)
+			print("Can't handle this type of survey! Please fill it in manually and try running the script again.")
+			exit(1)
 		while driver.title[:len(strings["survey_title"])] == strings["survey_title"]:
 			elements = [e for e in all_elements if e.is_displayed()]
 			if elements:
