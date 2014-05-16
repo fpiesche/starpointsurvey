@@ -3,6 +3,7 @@ try:
 	from selenium import webdriver
 except ImportError:
 	print("Selenium is required for this script. Run 'easy_install selenium' or 'pip install selenium' to install this.")
+	exit(1)
 
 from random import randrange, choice
 from time import sleep
