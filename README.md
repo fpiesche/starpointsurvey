@@ -17,4 +17,9 @@ https://code.google.com/p/selenium/wiki/ChromeDriver for ChromeDriver if you abs
 Usage
 -----
 
-    python starpointsurvey.py -e Club_Nintendo_login_email -p Club_Nintendo_login_password [-b chrome]
+    python starpointsurvey.py -e Club_Nintendo_login_email -p Club_Nintendo_login_password
+        [-b chrome] [-c productcode]
+
+If the script is not given a retail product code using the -c parameter, it will open the list of registered products on the account, scan it for open surveys and fill them in if needed (e.g. for eShop purchases).
+
+Alternately, you can pass in the product code from the flyer included with retail games with the -c parameter to register it and fill in the survey, claiming your stars.
