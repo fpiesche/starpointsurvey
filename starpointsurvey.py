@@ -124,7 +124,8 @@ if __name__ == "__main__":
 	parser.add_argument('-e', '--email', type=str, required=True, help='Email address to log in with.')
 	parser.add_argument('-p', '--password', type=str, required=True, help="The password to use for the login.")
 	parser.add_argument('-b', '--browser', type=str, default='firefox', help="Which browser to use (supported: chrome|firefox, default firefox)")
-	parser.add_argument('-c', '--code', type=str, required=False, help="Product Code to register and fill in the survey for.")
+	parser.add_argument('-c', '--code', type=str, action='append', required=False, help="Product Codes to register and fill in the survey for.")
+	parser.add_argument('-s', '--site', type=str, default="http://www.nintendo.co.uk/", help="Which base Nintendo website to use.")
 
 	args = parser.parse_args()
 
@@ -164,12 +165,15 @@ if __name__ == "__main__":
 	login()
 
 	if args.code:
-		driver.get(registration_url)
 
-		pcode = driver.find_element_by_id(form_elements["product_code"])
-		pcode.send_keys(args.code)
-		next_survey_page()
-		fill_survey()
+		for code in args.code:
+
+			driver.get(registration_url)
+
+			pcode = driver.find_element_by_id(form_elements["product_code"])
+			pcode.send_keys(code)
+			next_survey_page()
+			fill_survey()
 
 	# no product code given - trawl account's page for open surveys and fill them in
 	if not args.code:
@@ -193,5 +197,6 @@ if __name__ == "__main__":
 
 			driver.get(survey)
 			fill_survey()
+
 
 	driver.quit()
