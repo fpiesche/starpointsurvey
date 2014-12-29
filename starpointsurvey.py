@@ -1,13 +1,97 @@
 #!/usr/bin/python
 try:
 	from selenium import webdriver
+	from selenium.common.exceptions import NoSuchElementException
 except ImportError:
 	print("Selenium is required for this script. Run 'easy_install selenium' or 'pip install selenium' to install this.")
 	exit(1)
 
 from random import randrange, choice
-from time import sleep
 import argparse
+
+def get_surveys():
+	try:
+		survey_links = driver.find_elements_by_xpath(form_elements["survey_links"])
+		return [survey.get_attribute("href") for survey in survey_links]
+	except NoSuchElementException:
+		return []
+
+def next_page():
+	try:
+		page_link = driver.find_element_by_id(form_elements["next_page"])
+		return page_link
+	except NoSuchElementException:
+		return False
+
+def next_survey_page():
+	next_buttons = driver.find_elements_by_xpath(form_elements["xpath_next_button"])
+	for button in next_buttons:
+		if button.is_displayed():
+			button.click()
+			return
+	raise Exception("Could not find a visible Next button!")
+
+def finish_survey():
+	driver.find_element_by_partial_link_text(strings["submit_button"]).click()
+
+def software_survey():
+	try:
+		all_elements = driver.find_elements_by_xpath(form_elements["xpath_survey_questions"])
+		age_box = driver.find_element_by_name(form_elements["age_box"])
+	except NoSuchElementException:
+		# Is this a page that's just text?
+		print("No survey elements found, trying to advance to next page.")
+		next_survey_page()
+
+	while driver.title.lower().startswith(strings["software_survey"]):
+		all_elements = driver.find_elements_by_xpath(form_elements["xpath_survey_questions"])
+		elements = [e for e in all_elements if e.is_displayed()]
+		if elements:
+			choice(elements).click()
+		if age_box.is_displayed():
+			age_box.send_keys(str(randrange(13, 90)))
+		try:
+			finish_survey()
+		except NoSuchElementException:
+			next_survey_page()
+
+def game_survey():
+	try:
+		all_elements = driver.find_elements_by_xpath(form_elements["xpath_survey_questions"])
+		elements = [e for e in all_elements if e.is_displayed()]
+		elem_groups = set([elem.get_attribute("name") for elem in elements])
+		elem_groups = list(elem_groups)
+	except NoSuchElementException:
+		# Is this a page that's just text?
+		print("No survey elements found, trying to advance to next page.")
+		next_survey_page()
+
+	while driver.title.lower().startswith(strings["game_survey"]) or driver.title.lower().startswith(strings["hardware_survey"]):
+		all_elements = driver.find_elements_by_xpath(form_elements["xpath_survey_questions"])
+		elements = [e for e in all_elements if e.is_displayed()]
+		elem_groups = set([elem.get_attribute("name") for elem in elements])
+		elem_groups = list(elem_groups)
+
+		# handle groups of radio buttons on the same page
+		for group in elem_groups:
+			grp_elem = driver.find_elements_by_xpath(form_elements["xpath_elem_groups"].replace("$GRP$", group))
+			choice(grp_elem).click()
+
+		# enter random values into all text fields
+		for txt_field in driver.find_elements_by_xpath(form_elements["xpath_text_fields"]):
+			if txt_field.is_displayed():
+				txt_field.send_keys(str(randrange(13, 90)))
+
+		# select random options from popup selections
+		for select in driver.find_elements_by_xpath(form_elements["xpath_select"]):
+			if select.is_displayed():
+				choice(select.find_elements_by_xpath(form_elements["xpath_options"])).click()
+
+		try:
+			finish_survey()
+		except NoSuchElementException:
+			next_survey_page()
+
 
 parser = argparse.ArgumentParser(description='Fill in survey forms on the Club Nintendo website.')
 parser.add_argument('-e', '--email', type=str, required=True, help='Email address to log in with.')
@@ -21,20 +105,24 @@ form_url = "https://www.nintendo.co.uk/NOE/en_GB/club_nintendo/mygamesandsystems
 form_elements = {
 	'login_userid':					"login_username",
 	'login_password':				"login_password",
-	'pager_links':					'number',
-	'survey_links':					'survey-link',
+	'next_page':					"paging-next-button-h",
+	'survey_links':					"//div[contains(@class,'survey-link')]/a",
 	'xpath_survey_questions':		"//input[@type='checkbox'] | //input[@type='radio']",
-	'age_box':						"q4"
+	'xpath_elem_groups':			"//input[@name='$GRP$']",
+	'xpath_next_button':			"//a[contains(@href,'next();')] | //a[contains(@href,'submitForm')]",
+	'xpath_text_fields':			"//input[@type='text'] | //input[@type='textarea']",
+	'xpath_select':					"//select",
+	'xpath_options':				"option[@value!='-1']",
+	'age_box':						"q4",
 	}
 
 strings = {
 	'login_form_show':		"MEMBER LOGIN",
 	'logout':				"LOGOUT",
-	'register_text':		"Claim Stars",
-	'review_site':			"Independent news or review website",
-	'survey_title':			"Software survey",
-	'survey_submit':		"SUBMIT",
-	'survey_complete_url':	"surveyConfirmation.do"
+	'software_survey':		"software survey",
+	'game_survey':			"game survey",
+	'hardware_survey':		"hardware survey",
+	'submit_button':		"SUBMIT",
 }
 
 if args.browser == 'chrome':
@@ -42,60 +130,49 @@ if args.browser == 'chrome':
 else:
 	driver = webdriver.Firefox()
 driver.implicitly_wait(10)
+
+# get registration page
 driver.get(form_url)
 
+# open login form and attempt login
 driver.find_element_by_partial_link_text(strings["login_form_show"]).click()
 driver.find_element_by_id(form_elements["login_userid"]).send_keys(args.email)
 driver.find_element_by_id(form_elements["login_password"]).send_keys(args.password)
 driver.find_element_by_id(form_elements["login_password"]).submit()
 
-driver.find_element_by_partial_link_text(strings["logout"])
+# verify that we're logged in
+try:
+	driver.find_element_by_partial_link_text(strings["logout"])
+except NoSuchElementException:
+	print("Login failed - verify your username and password please!")
+	exit(1)
 
+# get the registration page again
 driver.get(form_url)
-registration_page = driver.current_url
+skipped_surveys = []
 
-items_per_page = driver.find_element_by_name("itemsPerPage")
-for option in items_per_page.find_elements_by_tag_name('option'):
-	if option.text == "100": option.click()
+# build list of survey links
+survey_urls = get_surveys()
 
-pager_links = driver.find_elements_by_class_name(form_elements["pager_links"])
-max_page = max(1, len(pager_links))
+np_link = next_page()
+while np_link:
+	np_link.click()
+	survey_urls += get_surveys()
+	np_link = next_page()
 
-# loop through pages
-for page in range(0, max_page):
+print("Found %s surveys." % len(survey_urls))
 
-	survey_links = driver.find_elements_by_class_name(form_elements["survey_links"])
-	while len(survey_links) > 0:
-		print(str(len(survey_links)) + " surveys left to complete...")
-		driver.find_element_by_class_name(form_elements["survey_links"]).click()
-		try:
-			all_elements = driver.find_elements_by_xpath(form_elements["xpath_survey_questions"])
-			age_box = driver.find_element_by_id(form_elements["age_box"])
-		except NoSuchElementException:
-			# TODO: handle the single-page survey for big downloads (?)
-			print("Can't handle this type of survey! Please fill it in manually and try running the script again.")
-			exit(1)
-		while driver.title[:len(strings["survey_title"])] == strings["survey_title"]:
-			elements = [e for e in all_elements if e.is_displayed()]
-			if elements:
-				choice(elements).click()
-			if age_box.is_displayed():
-				age_box.send_keys(str(randrange(13, 90)))
-			try:
-				driver.find_element_by_partial_link_text(strings["survey_submit"])
-				driver.execute_script("submit();")
-				break
-			except:
-				driver.execute_script("next();")
+# loop over survey links on all subsequent pages
+for survey in survey_urls:
 
-		driver.get(registration_page)
-		items_per_page = driver.find_element_by_name("itemsPerPage")
-		for option in items_per_page.find_elements_by_tag_name('option'):
-			if option.text == "100": option.click()
+	driver.get(survey)
 
-	pager_links = driver.find_elements_by_class_name(form_elements["pager_links"])
-	if len(pager_links) > page:
-		pager_links[page+1].click()
+	if driver.title.lower().startswith(strings["software_survey"]):
+		software_survey()
+	elif driver.title.lower().startswith(strings["game_survey"]) or driver.title.lower().startswith(strings["hardware_survey"]):
+		game_survey()
+	else:
+		print("Unknown survey type! Page title: %s" % driver.title)
+
 
 driver.quit()
-print("All surveys completed.")
