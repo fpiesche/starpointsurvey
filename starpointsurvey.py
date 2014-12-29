@@ -92,81 +92,24 @@ def game_survey():
 		except NoSuchElementException:
 			next_survey_page()
 
+def login():
+	# get registration page
+	driver.get(form_url)
 
-parser = argparse.ArgumentParser(description='Fill in survey forms on the Club Nintendo website.')
-parser.add_argument('-e', '--email', type=str, required=True, help='Email address to log in with.')
-parser.add_argument('-p', '--password', type=str, required=True, help="The password to use for the login.")
-parser.add_argument('-b', '--browser', type=str, default='firefox', help="Which browser to use (supported: chrome|firefox, default firefox)")
+	# open login form and attempt login
+	driver.find_element_by_partial_link_text(strings["login_form_show"]).click()
+	driver.find_element_by_id(form_elements["login_userid"]).send_keys(args.email)
+	driver.find_element_by_id(form_elements["login_password"]).send_keys(args.password)
+	driver.find_element_by_id(form_elements["login_password"]).submit()
 
-args = parser.parse_args()
+	# verify that we're logged in
+	try:
+		driver.find_element_by_partial_link_text(strings["logout"])
+	except NoSuchElementException:
+		print("Login failed - verify your username and password please!")
+		exit(1)
 
-form_url = "https://www.nintendo.co.uk/NOE/en_GB/club_nintendo/mygamesandsystems_p3_do.jsp"
-
-form_elements = {
-	'login_userid':					"login_username",
-	'login_password':				"login_password",
-	'next_page':					"paging-next-button-h",
-	'survey_links':					"//div[contains(@class,'survey-link')]/a",
-	'xpath_survey_questions':		"//input[@type='checkbox'] | //input[@type='radio']",
-	'xpath_elem_groups':			"//input[@name='$GRP$']",
-	'xpath_next_button':			"//a[contains(@href,'next();')] | //a[contains(@href,'submitForm')]",
-	'xpath_text_fields':			"//input[@type='text'] | //input[@type='textarea']",
-	'xpath_select':					"//select",
-	'xpath_options':				"option[@value!='-1']",
-	'age_box':						"q4",
-	}
-
-strings = {
-	'login_form_show':		"MEMBER LOGIN",
-	'logout':				"LOGOUT",
-	'software_survey':		"software survey",
-	'game_survey':			"game survey",
-	'hardware_survey':		"hardware survey",
-	'submit_button':		"SUBMIT",
-}
-
-if args.browser == 'chrome':
-	driver = webdriver.Chrome()
-else:
-	driver = webdriver.Firefox()
-driver.implicitly_wait(10)
-
-# get registration page
-driver.get(form_url)
-
-# open login form and attempt login
-driver.find_element_by_partial_link_text(strings["login_form_show"]).click()
-driver.find_element_by_id(form_elements["login_userid"]).send_keys(args.email)
-driver.find_element_by_id(form_elements["login_password"]).send_keys(args.password)
-driver.find_element_by_id(form_elements["login_password"]).submit()
-
-# verify that we're logged in
-try:
-	driver.find_element_by_partial_link_text(strings["logout"])
-except NoSuchElementException:
-	print("Login failed - verify your username and password please!")
-	exit(1)
-
-# get the registration page again
-driver.get(form_url)
-skipped_surveys = []
-
-# build list of survey links
-survey_urls = get_surveys()
-
-np_link = next_page()
-while np_link:
-	np_link.click()
-	survey_urls += get_surveys()
-	np_link = next_page()
-
-print("Found %s surveys." % len(survey_urls))
-
-# loop over survey links on all subsequent pages
-for survey in survey_urls:
-
-	driver.get(survey)
-
+def fill_survey():
 	if driver.title.lower().startswith(strings["software_survey"]):
 		software_survey()
 	elif driver.title.lower().startswith(strings["game_survey"]) or driver.title.lower().startswith(strings["hardware_survey"]):
@@ -175,4 +118,80 @@ for survey in survey_urls:
 		print("Unknown survey type! Page title: %s" % driver.title)
 
 
-driver.quit()
+if __name__ == "__main__":
+
+	parser = argparse.ArgumentParser(description='Fill in survey forms on the Club Nintendo website.')
+	parser.add_argument('-e', '--email', type=str, required=True, help='Email address to log in with.')
+	parser.add_argument('-p', '--password', type=str, required=True, help="The password to use for the login.")
+	parser.add_argument('-b', '--browser', type=str, default='firefox', help="Which browser to use (supported: chrome|firefox, default firefox)")
+	parser.add_argument('-c', '--code', type=str, required=False, help="Product Code to register and fill in the survey for.")
+
+	args = parser.parse_args()
+
+	form_url = "https://www.nintendo.co.uk/NOE/en_GB/club_nintendo/mygamesandsystems_p3_do.jsp"
+	registration_url = "http://www.nintendo.co.uk/NOE/en_GB/club_nintendo/product_registration/product_registration.jsp"
+
+	form_elements = {
+		'login_userid':					"login_username",
+		'login_password':				"login_password",
+		'next_page':					"paging-next-button-h",
+		'survey_links':					"//div[contains(@class,'survey-link')]/a",
+		'xpath_survey_questions':		"//input[@type='checkbox'] | //input[@type='radio']",
+		'xpath_elem_groups':			"//input[@name='$GRP$']",
+		'xpath_next_button':			"//a[contains(@href,'next();')] | //a[contains(@href,'submitForm')]",
+		'xpath_text_fields':			"//input[@type='text'] | //input[@type='textarea']",
+		'xpath_select':					"//select",
+		'xpath_options':				"option[@value!='-1']",
+		'age_box':						"q4",
+		'product_code':					"productcode",
+		}
+
+	strings = {
+		'login_form_show':		"MEMBER LOGIN",
+		'logout':				"LOGOUT",
+		'software_survey':		"software survey",
+		'game_survey':			"game survey",
+		'hardware_survey':		"hardware survey",
+		'submit_button':		"SUBMIT",
+	}
+
+	if args.browser == 'chrome':
+		driver = webdriver.Chrome()
+	else:
+		driver = webdriver.Firefox()
+	driver.implicitly_wait(10)
+
+	login()
+
+	if args.code:
+		driver.get(registration_url)
+
+		pcode = driver.find_element_by_id(form_elements["product_code"])
+		pcode.send_keys(args.code)
+		next_survey_page()
+		fill_survey()
+
+	# no product code given - trawl account's page for open surveys and fill them in
+	if not args.code:
+
+		# get the registration page again
+		driver.get(form_url)
+
+		# build list of survey links
+		survey_urls = get_surveys()
+
+		np_link = next_page()
+		while np_link:
+			np_link.click()
+			survey_urls += get_surveys()
+			np_link = next_page()
+
+		print("Found %s surveys." % len(survey_urls))
+
+		# loop over survey links on all subsequent pages
+		for survey in survey_urls:
+
+			driver.get(survey)
+			fill_survey()
+
+	driver.quit()
