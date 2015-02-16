@@ -1,4 +1,7 @@
 #!/usr/bin/python
+
+from __future__ import print_function
+
 try:
 	from selenium import webdriver
 	from selenium.common.exceptions import NoSuchElementException
@@ -7,6 +10,7 @@ except ImportError:
 	exit(1)
 
 from random import randrange, choice
+import os
 import argparse
 
 def get_surveys():
@@ -115,8 +119,13 @@ def fill_survey():
 	elif driver.title.lower().startswith(strings["game_survey"]) or driver.title.lower().startswith(strings["hardware_survey"]):
 		game_survey()
 	else:
-		print("Unknown survey type! Page title: %s" % driver.title)
+		raise ValueError("Unknown survey type! Page title: %s" % driver.title)
 
+def get_error():
+	try:
+		return driver.find_element_by_class_name("error-message").text
+	except NoSuchElementException:
+		return None
 
 if __name__ == "__main__":
 
@@ -166,14 +175,28 @@ if __name__ == "__main__":
 
 	if args.code:
 
-		for code in args.code:
+		if os.path.isfile(args.code[0]):
+			with open(args.code[0]) as codefile:
+				codes = codefile.read().split()
+		else:
+			codes = args.code
+
+		for code in codes:
 
 			driver.get(registration_url)
 
 			pcode = driver.find_element_by_id(form_elements["product_code"])
 			pcode.send_keys(code)
 			next_survey_page()
-			fill_survey()
+			try:
+				fill_survey()
+			except ValueError as exc:
+				error = get_error()
+				if not error:
+					error = exc.message
+				print("Code failed: %s, reason: %s" % (code, error))
+			else:
+				print("Code successful: %s" % code)
 
 	# no product code given - trawl account's page for open surveys and fill them in
 	if not args.code:
