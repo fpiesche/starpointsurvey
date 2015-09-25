@@ -9,9 +9,11 @@ By default, this will open your Registered Products page, find survey links and 
 Requirements
 ------------
 
-Requires Python, the Selenium module and Firefox (default) or Chrome (which in turn requires chromedriver). To install selenium, run <code>pip install selenium</code> or <code>easy_install selenium</code>.
+Requires Python, the Selenium module and Firefox (default) or Chrome (which in turn requires chromedriver).
 
-https://code.google.com/p/selenium/wiki/ChromeDriver for ChromeDriver if you absolutely must use Chrome for this.
+- *On Windows only*, install Python: download the installer from http://www.python.org/ and install.
+- Install selenium: open a terminal/command prompt window and run <code>pip install selenium</code> or <code>easy_install selenium</code>. On Windows, you MAY have to run this as <code>c:\Python27\Scripts\pip.exe install selenium</code> (or <code>c:\Python34\Scripts\pip.exe install selenium</code> if you installed Python 3.4)
+- *If* you want to use Chrome, visit https://code.google.com/p/selenium/wiki/ChromeDriver, download chromedriver.exe and store it in the same directory as starpointsurvey.py.
 
 
 Usage
