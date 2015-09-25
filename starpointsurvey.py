@@ -48,6 +48,12 @@ def software_survey():
 		next_survey_page()
 
 	while driver.title.lower().startswith(strings["software_survey"]):
+		try:
+			driver.find_element_by_xpath("//div[contains(.,'%s')]" % strings['survey_done'])
+			break
+		except NoSuchElementException:
+			pass
+
 		all_elements = driver.find_elements_by_xpath(form_elements["xpath_survey_questions"])
 		elements = [e for e in all_elements if e.is_displayed()]
 		if elements:
@@ -165,6 +171,7 @@ if __name__ == "__main__":
 		'hardware_survey':		"hardware survey",
 		'submit_button':		"SUBMIT",
 		'login_clubnintendo':	"LOG IN USING CLUB NINTENDO ACCOUNT",
+		'survey_done':			"Your new Stars Balance",
 	}
 
 	if args.browser == 'chrome':
