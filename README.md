@@ -26,4 +26,4 @@ If the script is not given a retail product code using the <code>-c</code> param
 
 Alternately, you can pass in the product code from the flyer included with retail games with the -c parameter to register it and fill in the survey, claiming your stars.
 
-*PROTIP:* You can use <code>-c productcode</code> multiple times to register multiple product codes in one go.
+*PROTIP:* You can use <code>-c productcode</code> multiple times to register multiple product codes in one go, or dump all your product codes into a text file (one per line) and use <code>-c productcodes.txt</code> to get them all.
