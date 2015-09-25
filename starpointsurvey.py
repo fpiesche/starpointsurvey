@@ -102,6 +102,7 @@ def login():
 
 	# open login form and attempt login
 	driver.find_element_by_partial_link_text(strings["login_form_show"]).click()
+	driver.find_element_by_partial_link_text(strings["login_clubnintendo"]).click()
 	driver.find_element_by_id(form_elements["login_userid"]).send_keys(args.email)
 	driver.find_element_by_id(form_elements["login_password"]).send_keys(args.password)
 	driver.find_element_by_id(form_elements["login_password"]).submit()
@@ -163,6 +164,7 @@ if __name__ == "__main__":
 		'game_survey':			"game survey",
 		'hardware_survey':		"hardware survey",
 		'submit_button':		"SUBMIT",
+		'login_clubnintendo':	"LOG IN USING CLUB NINTENDO ACCOUNT",
 	}
 
 	if args.browser == 'chrome':
